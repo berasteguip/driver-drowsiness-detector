@@ -13,8 +13,7 @@ def main():
     eye_preprocessor = EyePreprocessor(output_size=32, margin=0.1, use_clahe=False)
 
     # Definimos las rutas
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__))) 
-    DATA_DIR = os.path.join(BASE_DIR, 'data')
+    DATA_DIR = '..\..\data'
     PROCESSED_DIR = os.path.join(DATA_DIR, 'processed')
     OUTPUT_DIR = os.path.join(DATA_DIR, 'eyes')
 
