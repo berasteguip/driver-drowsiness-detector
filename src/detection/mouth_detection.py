@@ -1,3 +1,4 @@
+import os
 import cv2
 
 class MouthDetector:
@@ -6,7 +7,8 @@ class MouthDetector:
     '''
     def __init__(self):
         # Cargamos el clasificador de boca
-        self.mouth_cascade = cv2.CascadeClassifier('../haarcascade_mcs_mouth.xml')
+        xml_path = os.path.join(os.path.dirname(__file__), '../../haarcascade_mcs_mouth.xml')
+        self.mouth_cascade = cv2.CascadeClassifier(xml_path)
 
     def detect(self, img, face_frame):
         # 1. Convertimos a gris

@@ -1,6 +1,6 @@
-from eye_detection import EyeDetector
-from face_detection import FaceDetector
-from mouth_detection import MouthDetector
+from .eye_detection import EyeDetector
+from .face_detection import FaceDetector
+from .mouth_detection import MouthDetector
 import cv2
 
 class Detector():
