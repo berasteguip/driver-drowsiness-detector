@@ -1,13 +1,16 @@
 import cv2
 import numpy as np
 
-class FacePreprocessor:
+class BasePreprocessor:
+    """
+    Clase base con la lógica de recorte cuadrado, padding y normalización.
+    """
     def __init__(
         self,
-        output_size=128,
-        margin=0.15,
-        use_clahe=True,
-        pad_mode="replicate"  # "replicate" | "constant"
+        output_size,
+        margin,
+        use_clahe,
+        pad_mode
     ):
         self.output_size = output_size
         self.margin = margin
@@ -20,14 +23,15 @@ class FacePreprocessor:
                 tileGridSize=(8, 8)
             )
 
-    def __call__(self, img, face_box):
-        if face_box is None:
+    def __call__(self, img, box):
+        if box is None:
             return None
 
+        # Si img ya es gris (2D), obtenemos H, W directamente. Si es BGR (3D), img.shape[:2]
         H, W = img.shape[:2]
-        x, y, w, h = face_box
+        x, y, w, h = box
 
-        # 1) Centro de la cara
+        # 1) Centro de la caja original
         cx = x + w // 2
         cy = y + h // 2
 
@@ -40,25 +44,26 @@ class FacePreprocessor:
         x1 = cx + side // 2
         y1 = cy + side // 2
 
-        # 4) Padding necesario
+        # 4) Padding necesario (cuánto nos salimos de la imagen)
         pad_left   = max(0, -x0)
         pad_top    = max(0, -y0)
         pad_right  = max(0, x1 - W)
         pad_bottom = max(0, y1 - H)
 
-        # 5) Clamp al frame
-        x0 = max(0, x0)
-        y0 = max(0, y0)
-        x1 = min(W, x1)
-        y1 = min(H, y1)
+        # 5) Clamp al frame (coordenadas válidas dentro de la imagen)
+        x0_valid = max(0, x0)
+        y0_valid = max(0, y0)
+        x1_valid = min(W, x1)
+        y1_valid = min(H, y1)
 
-        face = img[y0:y1, x0:x1]
+        # Recorte de la parte válida
+        crop = img[y0_valid:y1_valid, x0_valid:x1_valid]
 
-        # 6) Aplicar padding si hace falta
+        # 6) Aplicar padding si hace falta para recuperar el tamaño "side"
         if any(p > 0 for p in [pad_left, pad_top, pad_right, pad_bottom]):
             if self.pad_mode == "replicate":
-                face = cv2.copyMakeBorder(
-                    face,
+                crop = cv2.copyMakeBorder(
+                    crop,
                     pad_top,
                     pad_bottom,
                     pad_left,
@@ -66,8 +71,8 @@ class FacePreprocessor:
                     borderType=cv2.BORDER_REPLICATE
                 )
             else:  # constant
-                face = cv2.copyMakeBorder(
-                    face,
+                crop = cv2.copyMakeBorder(
+                    crop,
                     pad_top,
                     pad_bottom,
                     pad_left,
@@ -76,18 +81,41 @@ class FacePreprocessor:
                     value=128
                 )
 
-        # 7) Escala de grises
-        gray = cv2.cvtColor(face, cv2.COLOR_BGR2GRAY)
+        # 7) Asegurar Escala de grises
+        # Si la imagen tenía 3 canales, convertimos. Si ya era gris, la dejamos.
+        if len(crop.shape) == 3:
+            gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = crop
 
-        # 8) Normalización de iluminación
+        # 8) Normalización de iluminación (CLAHE)
         if self.use_clahe:
             gray = self.clahe.apply(gray)
 
-        # 9) Resize final (sin distorsión)
-        face_norm = cv2.resize(
+        # 9) Resize final (sin distorsión, porque ya hicimos el recorte cuadrado)
+        output = cv2.resize(
             gray,
             (self.output_size, self.output_size),
             interpolation=cv2.INTER_LINEAR
         )
 
-        return face_norm
+        return output
+
+
+class FacePreprocessor(BasePreprocessor):
+    """
+    Preprocesador específico para detectar y guardar Caras (128x128 por defecto).
+    """
+    def __init__(self, output_size=128, margin=0.15, use_clahe=True, pad_mode="replicate"):
+        super().__init__(output_size, margin, use_clahe, pad_mode)
+
+
+class EyePreprocessor(BasePreprocessor):
+    """
+    Preprocesador específico para Ojos.
+    Tamaño por defecto reducido (32x32) ideal para HOG.
+    use_clahe=False por defecto si asumimos que venimos de una cara ya procesada (para no contrastar dos veces),
+    pero se puede activar si venimos de RAW.
+    """
+    def __init__(self, output_size=32, margin=0.15, use_clahe=False, pad_mode="replicate"):
+        super().__init__(output_size, margin, use_clahe, pad_mode)

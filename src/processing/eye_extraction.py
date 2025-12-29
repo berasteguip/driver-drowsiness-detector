@@ -1,36 +1,73 @@
-from ..detection.detector import Detector
 import cv2
-
-detector = Detector()
+import os
+import glob
+from tqdm import tqdm
+from ..detection.eye_detection import EyeDetector
+from .preprocess import EyePreprocessor
 
 def main():
-    # Iniciamos la captura de video
-    webcam = cv2.VideoCapture(0)
-    # Instanciamos nuestra clase general
-    mi_detector = detector
+    # Inicializamos el detector de ojos
+    eye_detector = EyeDetector()
+    
+    # Inicializamos el preprocesador de ojos (32x32 para HOG, sin CLAHE extra porque ya viene procesado)
+    eye_preprocessor = EyePreprocessor(output_size=32, margin=0.1, use_clahe=False)
 
-    print("Presiona ESC para salir...")
+    # Definimos las rutas
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__))) 
+    DATA_DIR = os.path.join(BASE_DIR, 'data')
+    PROCESSED_DIR = os.path.join(DATA_DIR, 'processed')
+    OUTPUT_DIR = os.path.join(DATA_DIR, 'eyes')
 
-    while True:
-        ret, frame = webcam.read()
-        if not ret:
-            break
+    datasets = ['active', 'drowsy']
 
-        # Espejo para que sea más natural
-        frame = cv2.flip(frame, 1)
+    for dataset in datasets:
+        input_path = os.path.join(PROCESSED_DIR, dataset)
+        output_path = os.path.join(OUTPUT_DIR, dataset)
+        
+        # Crear directorio de salida si no existe
+        os.makedirs(output_path, exist_ok=True)
 
-        # Llamamos al método draw que ahora detecta y dibuja todo
-        frame_procesado = mi_detector.draw(frame)
+        # Buscar imágenes (png o jpg)
+        image_files = glob.glob(os.path.join(input_path, "*.png")) + \
+                      glob.glob(os.path.join(input_path, "*.jpg"))
+        
+        print(f"Procesando {len(image_files)} imágenes de '{dataset}' en '{input_path}'...")
+        
+        processed_count = 0
+        eyes_extracted = 0
 
-        # Mostramos el resultado
-        cv2.imshow('Deteccion Completa - Facial', frame_procesado)
+        for img_file in tqdm(image_files):
+            img = cv2.imread(img_file)
+            if img is None:
+                continue
+            
+            # Como la imagen YA ES LA CARA (processed), el frame de la cara es toda la imagen
+            h, w = img.shape[:2]
+            face_frame = (0, 0, w, h)
 
-        # Salir con la tecla ESC (27)
-        if cv2.waitKey(1) & 0xFF == 27:
-            break
+            # Detectar ojos
+            eyes_coords = eye_detector.detect(img, face_frame)
 
-    webcam.release()
-    cv2.destroyAllWindows()
+            if eyes_coords is not None:
+                # Extraer cada ojo usando el preprocesador
+                for i, eye_box in enumerate(eyes_coords):
+                    
+                    # Usamos el preprocesador para extraer y normalizar (32x32)
+                    eye_img = eye_preprocessor(img, eye_box)
+                    
+                    if eye_img is not None:
+                        # Guardar ojo
+                        base_name = os.path.basename(img_file)
+                        name_parts = os.path.splitext(base_name)
+                        save_name = f"{name_parts[0]}_eye{i+1}.png"
+                        save_path = os.path.join(output_path, save_name)
+                        
+                        cv2.imwrite(save_path, eye_img)
+                        eyes_extracted += 1
+                
+                processed_count += 1
+            
+        print(f"Finalizado {dataset}. Imágenes con ojos detectados: {processed_count}. Total ojos extraídos: {eyes_extracted}")
 
 if __name__ == '__main__':
     main()
