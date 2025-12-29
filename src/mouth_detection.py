@@ -1,60 +1,34 @@
 import cv2
-from face_detection import FaceDetector
 
 class MouthDetector:
     '''
-    Clase que detecta la boca en una imagen y lo dibuja
+    Clase que detecta la boca en una imagen y devuelve coordenadas globales
     '''
     def __init__(self):
+        # Cargamos el clasificador de boca
         self.mouth_cascade = cv2.CascadeClassifier('../haarcascade_mcs_mouth.xml')
-        self.face_detector = FaceDetector()
 
-    def detect(self, img):
+    def detect(self, img, face_frame):
+        # 1. Convertimos a gris
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        # Use slightly more robust parameters (scaleFactor=1.1, minNeighbors=5)
-        face_frame = self.face_detector.detect(img)
-        if face_frame is None:
-            return None
-        mouths = self.mouth_cascade.detectMultiScale(gray, 1.1, 5)
         
+        # 2. Extraemos coordenadas de la cara: face_frame = (x_cara, y_cara, w_cara, h_cara)
+        xf, yf, wf, hf = face_frame
+        gray_face = gray[yf :yf+hf, xf:xf+wf]
+        
+        # 3. Detectamos bocas en la región de la cara
+        mouths = self.mouth_cascade.detectMultiScale(gray_face, 1.1, 5)
+        
+        # Si no detecta ninguna boca, devolvemos None
         if len(mouths) == 0:
             return None
             
-        # Nos quedamos con el más pequeño (el usuario principal)
-        lowest_mouth = min(mouths, key=lambda m: m[1])
-        return lowest_mouth
-    
-    def draw(self, img):
+        # 4. Ordenamos por área y tomamos la más grande
+        sorted_mouths = sorted(mouths, key=lambda m: m[2] * m[3], reverse=True)
+        mx, my, mw, mh = sorted_mouths[0] # Coordenadas relativas a la cara
         
-        mouth_frame = self.detect(img)
-        if mouth_frame is not None:
-            x, y, w, h = mouth_frame
-            cv2.rectangle(img, (x,y), (x+w, y+h), (0,255,0), 4)
-        else:
-            cv2.putText(img, "Mouth not found", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-
-
-def main():
-    '''
-    Función principal que ejecuta el detector de bocas
-    '''
-    webcam = cv2.VideoCapture(0)
-    mouth_detector = MouthDetector()
-
-    while True:
-        _, img = webcam.read()
-        img = cv2.flip(img, 1)
-
-        mouth_detector.draw(img)
-        cv2.imshow('Mouth detection', img)
-        key = cv2.waitKey(10)
-
-        if key == 27:
-            break
-
-    webcam.release()
-    cv2.destroyAllWindows()
-
-
-if __name__ == '__main__':
-    main()
+        # 5. AJUSTE: Sumamos la posición de la cara para obtener coordenadas globales
+        # Esto permite que la boca coincida con la imagen original
+        global_mouth = (xf + mx, yf + my, mw, mh)
+        
+        return global_mouth

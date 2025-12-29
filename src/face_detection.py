@@ -5,7 +5,7 @@ class FaceDetector:
     Clase que detecta un único rostro en una imagen y lo dibuja
     '''
     def __init__(self):
-        self.face_cascade = cv2.CascadeClassifier('../haarcascade_frontalface_default.xml')
+        self.face_cascade = cv2.CascadeClassifier('..\haarcascade_frontalface_default.xml')
 
     def detect(self, img):
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
