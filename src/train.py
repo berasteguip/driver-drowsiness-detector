@@ -1,71 +1,138 @@
-# train.py
-# Entrena XGBoost a partir de data/features_hog.npz
-# (X: (N,D), y: (N,))
+# train_cv.py  (con barra de progreso usando tqdm)
+# Entrena 1 modelo XGBoost por lado (left/right) con validación cruzada.
+# Muestra progreso por folds y por lado.
+#
+# Ejecutas desde: Proyecto Final/driver-drowsiness-detector/src/processing
 
+from __future__ import annotations
+
+from pathlib import Path
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import (
-    confusion_matrix,
-    classification_report,
-    roc_auc_score,
-)
 import xgboost as xgb
 import joblib
-from utils import *
 
-def main():
-    # 1) Cargar features
-    data = np.load("../../data/features_hog.npz", allow_pickle=True)
-    X = data["X"].astype(np.float32)
-    y = data["y"].astype(np.int64)
+from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import roc_auc_score, f1_score
+from tqdm import tqdm
 
-    # 2) Split (estratificado)
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y,
-        test_size=0.30,
-        random_state=42,
-        stratify=y
-    )
 
-    # 3) Modelo (baseline razonable)
-    clf = xgb.XGBClassifier(
+def project_root_from_this_file() -> Path:
+    # .../Proyecto Final/driver-drowsiness-detector/src/processing/train_cv.py
+    return Path(__file__).resolve().parents[3]
+
+
+def load_side_dataset(side: str) -> tuple[np.ndarray, np.ndarray]:
+    root = project_root_from_this_file()
+    base = root / "Proyecto Final" / "data" / "features" / side
+
+    a = np.load(base / "active" / "features_hog.npz", allow_pickle=True)
+    d = np.load(base / "drowsy" / "features_hog.npz", allow_pickle=True)
+
+    X = np.vstack([a["X"], d["X"]]).astype(np.float32)
+    y = np.concatenate([a["y"], d["y"]]).astype(np.int64)
+
+    idx = np.random.default_rng(42).permutation(len(y))
+    return X[idx], y[idx]
+
+
+def make_model(scale_pos_weight: float = 1.0) -> xgb.XGBClassifier:
+    return xgb.XGBClassifier(
         objective="binary:logistic",
-        n_estimators=400,
+        n_estimators=600,
         learning_rate=0.05,
         max_depth=4,
+        min_child_weight=2.0,
         subsample=0.8,
         colsample_bytree=0.8,
         reg_lambda=1.0,
-        min_child_weight=1.0,
+        scale_pos_weight=scale_pos_weight,
         eval_metric="logloss",
         n_jobs=-1,
-        random_state=42
+        random_state=42,
     )
 
-    # 4) Entrenar (con early stopping usando un set de validación)
-    #    Nota: aquí usamos el test como validación SOLO para simplificar el esqueleto.
-    #    En serio: crea un val set dentro de train.
-    clf.fit(
-        X_train, y_train,
-        eval_set=[(X_test, y_test)],
-        verbose=False
+
+def cross_validate_side(side: str, k: int = 5) -> None:
+    X, y = load_side_dataset(side)
+
+    n_pos = int((y == 1).sum())
+    n_neg = int((y == 0).sum())
+    spw = (n_neg / n_pos) if n_pos > 0 else 1.0
+
+    skf = StratifiedKFold(n_splits=k, shuffle=True, random_state=42)
+
+    aucs, f1s = [], []
+
+    print(f"\n=== Cross-validation for side: {side.upper()} ===")
+
+    for fold, (tr, va) in enumerate(
+        tqdm(skf.split(X, y), total=k, desc=f"[{side}] folds"),
+        start=1
+    ):
+        Xtr, ytr = X[tr], y[tr]
+        Xva, yva = X[va], y[va]
+
+        model = make_model(scale_pos_weight=spw)
+
+        model.fit(
+            Xtr, ytr,
+            eval_set=[(Xva, yva)],
+            verbose=False,
+        )
+
+        p = model.predict_proba(Xva)[:, 1]
+        yhat = (p >= 0.5).astype(int)
+
+        auc = roc_auc_score(yva, p)
+        f1 = f1_score(yva, yhat)
+
+        aucs.append(auc)
+        f1s.append(f1)
+
+        tqdm.write(
+            f"[{side}] fold {fold}/{k} | AUC={auc:.4f} | F1={f1:.4f} | n_val={len(yva)}"
+        )
+
+    print(
+        f"\n[{side}] CV mean±std | "
+        f"AUC={np.mean(aucs):.4f}±{np.std(aucs):.4f} | "
+        f"F1={np.mean(f1s):.4f}±{np.std(f1s):.4f} | "
+        f"pos_rate={(y==1).mean():.3f}"
     )
 
-    # 5) Evaluación
-    y_prob = clf.predict_proba(X_test)[:, 1]
-    y_pred = (y_prob >= 0.5).astype(int)
 
-    print("ROC-AUC:", roc_auc_score(y_test, y_prob))
+def train_final_and_save(side: str) -> None:
+    X, y = load_side_dataset(side)
 
-    plot_roc_curve(y_test, y_prob)
+    n_pos = int((y == 1).sum())
+    n_neg = int((y == 0).sum())
+    spw = (n_neg / n_pos) if n_pos > 0 else 1.0
 
-    print("Confusion matrix:\n", confusion_matrix(y_test, y_pred))
-    print(classification_report(y_test, y_pred, digits=3))
+    print(f"\n=== Training final model for side: {side.upper()} ===")
 
-    # 6) Guardar modelo
-    joblib.dump(clf, "models/xgb_hog.pkl")
-    print("Saved: models/xgb_hog.pkl")
+    model = make_model(scale_pos_weight=spw)
+
+    # Barra de progreso a nivel de entrenamiento (estimadores)
+    # Nota: XGBoost no expone progreso interno fácilmente;
+    # tqdm aquí indica fase, no árboles individuales.
+    with tqdm(total=1, desc=f"[{side}] training") as pbar:
+        model.fit(X, y, verbose=False)
+        pbar.update(1)
+
+    root = project_root_from_this_file()
+    out_dir = root / "models"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    out_path = out_dir / f"xgb_eye_{side}.pkl"
+    joblib.dump(model, out_path)
+    print(f"[{side}] saved model -> {out_path}")
 
 
 if __name__ == "__main__":
-    main()
+    # Validación cruzada
+    for side in ["left", "right"]:
+        cross_validate_side(side, k=5)
+
+    # Entrenamiento final
+    for side in ["left", "right"]:
+        train_final_and_save(side)
