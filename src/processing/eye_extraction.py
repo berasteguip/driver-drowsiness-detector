@@ -23,6 +23,16 @@ def main():
     DATA_DIR = os.path.join(os.path.dirname(BASE_DIR), 'data')
     PROCESSED_DIR = os.path.join(DATA_DIR, 'face\processed')
     OUTPUT_DIR = os.path.join(DATA_DIR, 'eyes')
+    LEFT_DIR = os.path.join(OUTPUT_DIR, 'active/left')
+    RIGHT_DIR = os.path.join(OUTPUT_DIR, 'active/right')
+    os.makedirs(LEFT_DIR, exist_ok=True)
+    os.makedirs(RIGHT_DIR, exist_ok=True)
+
+    LEFT_DIR = os.path.join(OUTPUT_DIR, 'drowsy/left')
+    RIGHT_DIR = os.path.join(OUTPUT_DIR, 'drowsy/right')
+
+    os.makedirs(LEFT_DIR, exist_ok=True)
+    os.makedirs(RIGHT_DIR, exist_ok=True)
 
     datasets = ['active', 'drowsy']
 
@@ -64,6 +74,7 @@ def main():
             
 
             if eyes_coords is not None:
+                
                 # Extraer cada ojo usando el preprocesador
                 for i, eye_box in enumerate(eyes_coords):
                     
@@ -71,20 +82,27 @@ def main():
                     eye_img = eye_preprocessor(img, eye_box)
                     
                     if eye_img is not None:
-                        print('Ojo guardado')
                         # Guardar ojo
+                        # Guardar ojo usando imencode y tofile para soportar rutas con tildes/eñes
+                        
+                        side = 'left' if i == 0 else 'right'
+
                         base_name = os.path.basename(img_file)
                         name_parts = os.path.splitext(base_name)
                         save_name = f"{name_parts[0]}_eye{i+1}.png"
-                        save_path = os.path.join(output_path, save_name)
-                        print(save_path)
-                        cv2.imwrite(save_path, eye_img)
+                        side_path = os.path.join(output_path, side)
+                        save_path = os.path.join(side_path, save_name)
+                        
+                        success, buffer = cv2.imencode(".png", eye_img)
+                        if success:
+                            buffer.tofile(save_path)
+                        else:
+                            print(f"Error al guardar el ojo en {save_path}")
+                        
                         eyes_extracted += 1
-                
+
                 processed_count += 1
-            
         print(f"Finalizado {dataset}. Imágenes con ojos detectados: {processed_count}. Total ojos extraídos: {eyes_extracted}")
-        cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     main()

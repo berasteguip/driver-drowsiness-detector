@@ -36,15 +36,18 @@ class EyeDetector:
         # 4. Ordenamos por área (más pequeños primero como tenías antes)
         sorted_eyes = sorted(eyes, key=lambda f: f[2] * f[3], reverse=False)
         
+        sorted_eyes = sorted_eyes[:2]
+        sorted_eyes = sorted(sorted_eyes, key=lambda f: f[0], reverse=False)
+
         # Ojo 1: Extraemos y sumamos posición de la cara
         ex1, ey1, ew1, eh1 = sorted_eyes[0]
-        eye1_global = (xf + ex1, yf + ey1, ew1, eh1)
+        left_eye = (xf + ex1, yf + ey1, ew1, eh1)
         
         # Ojo 2: Extraemos y sumamos posición de la cara
         ex2, ey2, ew2, eh2 = sorted_eyes[1]
-        eye2_global = (xf + ex2, yf + ey2, ew2, eh2)
+        right_eye = (xf + ex2, yf + ey2, ew2, eh2)
         
-        return (eye1_global, eye2_global)
+        return (left_eye, right_eye)
     
     def draw(self, img, eyes_frame):
         # Si recibimos la tupla de dos ojos, los dibujamos
