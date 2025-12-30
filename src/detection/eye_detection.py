@@ -7,8 +7,15 @@ class EyeDetector:
     Clase que detecta un par de ojos en una imagen y devuelve coordenadas globales
     '''
     def __init__(self):
-        # Usamos ruta absoluta relativa al archivo para evitar errores según desde dónde se ejecute
-        xml_path = os.path.join(os.path.dirname(__file__), '../../haarcascade_eye.xml')
+        # Usamos ruta absoluta relativa al archivo, pero intentamos convertir a relativa al CWD
+        # para evitar problemas de encoding con caracteres especiales (tildes) en Windows/OpenCV
+        abs_path = os.path.join(os.path.dirname(__file__), '../../haarcascade_eye.xml')
+        try:
+            # Si estamos en la raíz, esto devuelve "haarcascade_eye.xml" que es seguro
+            xml_path = os.path.relpath(abs_path, os.getcwd())
+        except ValueError:
+            xml_path = abs_path
+            
         self.eye_cascade = cv2.CascadeClassifier(xml_path)
 
     def detect(self, img, face_frame):

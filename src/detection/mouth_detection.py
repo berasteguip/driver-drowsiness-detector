@@ -7,7 +7,11 @@ class MouthDetector:
     '''
     def __init__(self):
         # Cargamos el clasificador de boca
-        xml_path = os.path.join(os.path.dirname(__file__), '../../haarcascade_mcs_mouth.xml')
+        abs_path = os.path.join(os.path.dirname(__file__), '../../haarcascade_mcs_mouth.xml')
+        try:
+            xml_path = os.path.relpath(abs_path, os.getcwd())
+        except ValueError:
+            xml_path = abs_path
         self.mouth_cascade = cv2.CascadeClassifier(xml_path)
 
     def detect(self, img, face_frame):

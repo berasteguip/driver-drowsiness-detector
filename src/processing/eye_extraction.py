@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 import os
 import glob
 from tqdm import tqdm
@@ -13,8 +14,14 @@ def main():
     eye_preprocessor = EyePreprocessor(output_size=32, margin=0.1, use_clahe=False)
 
     # Definimos las rutas
-    DATA_DIR = '..\..\data'
-    PROCESSED_DIR = os.path.join(DATA_DIR, 'processed')
+    # project_root/
+    #   driver-drowsiness-detector/ (BASE_DIR)
+    #     src/
+    #   data/ (Sibling)
+    
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__))) 
+    DATA_DIR = os.path.join(os.path.dirname(BASE_DIR), 'data')
+    PROCESSED_DIR = os.path.join(DATA_DIR, 'face\processed')
     OUTPUT_DIR = os.path.join(DATA_DIR, 'eyes')
 
     datasets = ['active', 'drowsy']
@@ -36,7 +43,15 @@ def main():
         eyes_extracted = 0
 
         for img_file in tqdm(image_files):
-            img = cv2.imread(img_file)
+            # Usar numpy + imdecode para soportar rutas con tildes/eñes en Windows
+            # cv2.imread falla silenciosamente con caracteres no ASCII en la ruta
+            try:
+                stream = np.fromfile(img_file, dtype=np.uint8)
+                img = cv2.imdecode(stream, cv2.IMREAD_COLOR)
+            except Exception:
+                print(f"Error al cargar la imagen: {img_file}")
+                img = None
+
             if img is None:
                 continue
             
@@ -46,6 +61,7 @@ def main():
 
             # Detectar ojos
             eyes_coords = eye_detector.detect(img, face_frame)
+            
 
             if eyes_coords is not None:
                 # Extraer cada ojo usando el preprocesador
@@ -55,18 +71,20 @@ def main():
                     eye_img = eye_preprocessor(img, eye_box)
                     
                     if eye_img is not None:
+                        print('Ojo guardado')
                         # Guardar ojo
                         base_name = os.path.basename(img_file)
                         name_parts = os.path.splitext(base_name)
                         save_name = f"{name_parts[0]}_eye{i+1}.png"
                         save_path = os.path.join(output_path, save_name)
-                        
+                        print(save_path)
                         cv2.imwrite(save_path, eye_img)
                         eyes_extracted += 1
                 
                 processed_count += 1
             
         print(f"Finalizado {dataset}. Imágenes con ojos detectados: {processed_count}. Total ojos extraídos: {eyes_extracted}")
+        cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     main()
