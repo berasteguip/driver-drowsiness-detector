@@ -1,4 +1,4 @@
-from sign_detection import detect, display_img, get_hand_landmarks
+from security.sign_detection import detect, display_img, get_hand_landmarks
 import cv2
 import mediapipe as mp
 
@@ -9,9 +9,9 @@ class Password:
     def verify(self, attempt: list[str]):
         return self.password == attempt
 
-def main():
+def security_system(passwd: list[str]):
 
-    password = Password(["ROCK", "PEACE", "SURF"])
+    password = Password(passwd)
     last_sign = "NO SIGN"
     mp_hands = mp.solutions.hands
     mp_drawing = mp.solutions.drawing_utils
@@ -35,7 +35,10 @@ def main():
 
                 hand_landmarks = get_hand_landmarks(frame, hand)
 
-                sign_detected = detect(frame, hand_landmarks)
+                if hand_landmarks:
+                    sign_detected = detect(frame, hand_landmarks)
+                else:
+                    sign_detected = "NO SIGN"
                 if sign_detected != last_sign:
                     last_sign = sign_detected
                     print(sign_detected)   
@@ -71,4 +74,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    security_system(["ROCK", "PEACE", "SURF"])

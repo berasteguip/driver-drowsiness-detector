@@ -5,16 +5,15 @@ import joblib
 import numpy as np
 import sys
 from pathlib import Path
+from detection.detector import Detector 
+from processing.eyes_features import HOGFeatureExtractor, HOGConfig
+from processing.preprocess import EyePreprocessor
 
 # Configuración de rutas
 current_file = Path(__file__).resolve()
 project_root = current_file.parents[1]
 if str(project_root) not in sys.path:
     sys.path.append(str(project_root))
-
-from src.detection.detector import Detector 
-from src.processing.eyes_features import HOGFeatureExtractor, HOGConfig
-from src.processing.preprocess import EyePreprocessor
 
 def load_models(models_dir: Path):
     left_model_path = models_dir / "xgb_eye_left.pkl"
@@ -25,7 +24,7 @@ def load_models(models_dir: Path):
 
     return joblib.load(left_model_path), joblib.load(right_model_path)
 
-def main():
+def drowsiness_tracker():
     models_dir = project_root / "models"
     
     try:
@@ -110,7 +109,8 @@ def main():
         cv2.imshow("Monitor de Somnolencia", frame)
         
         frame_count += 1
-        if cv2.waitKey(1) & 0xFF == 27: break
+        if cv2.waitKey(1) & 0xFF == 27:
+            break
 
     cap.release()
     cv2.destroyAllWindows()
