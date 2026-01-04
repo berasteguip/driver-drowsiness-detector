@@ -112,25 +112,52 @@ def get_tips(hand_landmarks):
         'm': fingers['m'][-1],
     }
     return tips
-    
+
+def dist_lm(a, b):
+    return math.hypot(a.x - b.x, a.y - b.y)
+
+def hand_scale(pts):
+    return dist_lm(pts[0], pts[5]) + 1e-9
+
+def rect_aspect_ratio_from_landmarks(hand_landmarks):
+    # Ratio altura / anchura del bounding box en coordenadas normalizadas
+    xmin, xmax, ymin, ymax = hand_limits(hand_landmarks)
+    width = (xmax.x - xmin.x) + 1e-9
+    height = (ymax.y - ymin.y) + 1e-9
+    return height / width
+
+#####################
+# Signos con la mano
+#####################
 
 def detect_surf(hand_landmarks, length_threshold = 0.7, max_sin_angle = 0.5, verbose = False):
+    """
+    Condiciones:
+    1) Pulgar y meñique muy separados (ratio sobre diagonal)
+    2) Segmento pulgar-meñique aproximadamente horizontal (sin(theta) pequeño)
+    3) Las dos yemas más altas (menor y) deben ser pulgar y meñique (en cualquier orden)
+    """
 
+    # (3) Chequeo de yemas "más altas"
+    tips = list(get_tips(hand_landmarks).items())
+    tips_sorted = sorted(tips, key=lambda x: x[1].y)  # menor y = más arriba
+    top2 = {tips_sorted[0][0], tips_sorted[1][0]}
+    if top2 != {"p", "m"}:
+        return False
+
+    # (1) + (2) Chequeos originales
     th_pk_dist, diag = finger_dist(hand_landmarks, 'p', 'm')
-    
-    diag_ratio = th_pk_dist / diag
-    
+    diag_ratio = th_pk_dist / (diag + 1e-9)
+
     fingers = get_fingers(hand_landmarks)
     thumb_tip, pinky_tip = fingers['p'][-1], fingers['m'][-1]
-
     ang = horizontality(thumb_tip, pinky_tip)
 
     if verbose:
         print('Distancia pulgar meñique', th_pk_dist)
         print('Diagonal marco', diag)
         print('Ratio', diag_ratio)
-
-    # print('angulo', ang)
+        print('sin(theta)', ang)
 
     return (diag_ratio > length_threshold) and (ang < max_sin_angle)
 
@@ -147,8 +174,18 @@ def detect_rock(hand_landmarks):
             return True
     return False
 
-def detect_peace(hand_landmarks):
-    
+def detect_peace(hand_landmarks, min_vertical_ratio=2.0):
+    """
+    Además de tu lógica:
+    - El bounding box de la mano debe ser claramente vertical:
+      altura/anchura >= 2.0  (equivalente a al menos 1:2 en anchura:altura)
+    """
+
+    # Chequeo de rectángulo vertical (altura/anchura >= 2)
+    aspect = rect_aspect_ratio_from_landmarks(hand_landmarks)
+    if aspect < min_vertical_ratio:
+        return False
+
     i_c_dist, diag = finger_dist(hand_landmarks, 'i', 'c')
     
     tips = list(get_tips(hand_landmarks).items())
@@ -169,7 +206,35 @@ def detect_peace(hand_landmarks):
 
     return dst / diag > 0.3
 
+# Mano de alien (Spok)
+def detect_vulcan(hand_landmarks,
+                  pair_thr=0.30,
+                  gap_thr=0.55,
+                  ratio_k=1.8):
+    pts = hand_landmarks.landmark
+    S = hand_scale(pts)
+
+    # TIPs
+    d_im = dist_lm(pts[8],  pts[12]) / S
+    d_rp = dist_lm(pts[16], pts[20]) / S
+    d_mr = dist_lm(pts[12], pts[16]) / S
+
+    tip_ok = (d_im < pair_thr) and (d_rp < pair_thr) and (d_mr > gap_thr) and (d_mr > ratio_k * max(d_im, d_rp))
+
+    # PIPs (backup)
+    d_im_p = dist_lm(pts[6],  pts[10]) / S
+    d_rp_p = dist_lm(pts[14], pts[18]) / S
+    d_mr_p = dist_lm(pts[10], pts[14]) / S
+
+    pip_ok = (d_im_p < pair_thr) and (d_rp_p < pair_thr) and (d_mr_p > gap_thr) and (d_mr_p > ratio_k * max(d_im_p, d_rp_p))
+
+    return tip_ok or pip_ok
+
 def detect(frame, hand_landmarks):
+    
+    if hand_landmarks == None:
+        return 'NO SIGN'
+
     rect = hand_rectangle(frame, hand_landmarks)
 
     sign_detected = 'NO SIGN'
@@ -181,8 +246,12 @@ def detect(frame, hand_landmarks):
         crop = frame[y1:y2, x1:x2]
         display_img(crop, 'Hand', max_size=500)
 
-        surf_ratio = detect_surf(hand_landmarks)
-        if surf_ratio > 0.7:
+        vulcan = detect_vulcan(hand_landmarks)
+        if vulcan:
+            sign_detected = 'VULCAN'
+
+        surf_ok = detect_surf(hand_landmarks)
+        if surf_ok:
             sign_detected = 'SURF'
 
         rock = detect_rock(hand_landmarks)
@@ -192,6 +261,7 @@ def detect(frame, hand_landmarks):
         peace = detect_peace(hand_landmarks)
         if peace:
             sign_detected = 'PEACE'
+
     return sign_detected
 
 if __name__ == "__main__":
