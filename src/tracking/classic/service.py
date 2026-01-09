@@ -2,18 +2,12 @@ from __future__ import annotations
 
 import cv2
 import joblib
-import numpy as np
-import sys
 from pathlib import Path
 from detection.detector import Detector 
 from processing.eyes_features import HOGFeatureExtractor, HOGConfig
 from processing.preprocess import EyePreprocessor
 
-# Configuración de rutas
-current_file = Path(__file__).resolve()
-project_root = current_file.parents[1]
-if str(project_root) not in sys.path:
-    sys.path.append(str(project_root))
+from config import MODELS_DIR
 
 def load_models(models_dir: Path):
     left_model_path = models_dir / "xgb_eye_left.pkl"
@@ -24,8 +18,8 @@ def load_models(models_dir: Path):
 
     return joblib.load(left_model_path), joblib.load(right_model_path)
 
-def drowsiness_tracker():
-    models_dir = project_root / "models"
+def run_classic_tracker():
+    models_dir = MODELS_DIR
     
     try:
         model_left, model_right = load_models(models_dir)
@@ -116,4 +110,4 @@ def drowsiness_tracker():
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-    main()
+    run_classic_tracker()

@@ -1,0 +1,6 @@
+# Ignorar dataset pesado
+data/
+
+# Ignorar archivos temporales de Python
+__pycache__/
+*.pyc

@@ -15,7 +15,7 @@ class FaceDetector:
 
     def detect(self, img):
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        # Use slightly more robust parameters (scaleFactor=1.1, minNeighbors=5)
+        
         faces = self.face_cascade.detectMultiScale(gray, 1.1, 5)
         
         if len(faces) == 0:
