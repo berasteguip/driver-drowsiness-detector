@@ -1,5 +1,6 @@
 import os
 import cv2
+from config import *
 
 class MouthDetector:
     '''
@@ -7,7 +8,7 @@ class MouthDetector:
     '''
     def __init__(self):
         # Cargamos el clasificador de boca
-        abs_path = os.path.join(os.path.dirname(__file__), '../../haarcascade_mcs_mouth.xml')
+        abs_path = MOUTH_CASCADE_PATH
         try:
             xml_path = os.path.relpath(abs_path, os.getcwd())
         except ValueError:

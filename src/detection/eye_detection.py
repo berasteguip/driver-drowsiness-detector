@@ -1,6 +1,7 @@
 import os
 import cv2
 from .face_detection import FaceDetector
+from config import *
 
 class EyeDetector:
     '''
@@ -9,7 +10,7 @@ class EyeDetector:
     def __init__(self):
         # Usamos ruta absoluta relativa al archivo, pero intentamos convertir a relativa al CWD
         # para evitar problemas de encoding con caracteres especiales (tildes) en Windows/OpenCV
-        abs_path = os.path.join(os.path.dirname(__file__), '../../haarcascade_eye.xml')
+        abs_path = EYE_CASCADE_PATH
         try:
             # Si estamos en la raíz, esto devuelve "haarcascade_eye.xml" que es seguro
             xml_path = os.path.relpath(abs_path, os.getcwd())

@@ -1,12 +1,13 @@
 import os
 import cv2
+from config import *
 
 class FaceDetector:
     '''
     Clase que detecta un único rostro en una imagen y lo dibuja
     '''
     def __init__(self):
-        abs_path = os.path.join(os.path.dirname(__file__), '../../haarcascade_frontalface_default.xml')
+        abs_path = FACE_CASCADE_PATH
         try:
             xml_path = os.path.relpath(abs_path, os.getcwd())
         except ValueError:
