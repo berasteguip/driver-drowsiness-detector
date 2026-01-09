@@ -1,0 +1,28 @@
+# Driver Drowsiness Detector - Requirements
+# Compatible con Python 3.11.10
+
+# Procesamiento de imágenes y visión por computadora
+opencv-python==4.8.1.78
+numpy==1.26.2
+
+# MediaPipe para detección facial y de manos
+mediapipe==0.10.9
+
+# Machine Learning - XGBoost
+xgboost==2.0.3
+
+# Herramientas de serialización
+joblib==1.3.2
+
+# Procesamiento de imágenes avanzado
+scikit-image==0.22.0
+scikit-learn==1.3.2
+
+# Manejo de archivos de imagen
+imageio==2.33.1
+
+# Visualización (opcional, para pruebas)
+matplotlib==3.8.2
+
+# Tipado estático (recomendado para Python 3.11)
+typing-extensions==4.8.0
