@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import time  # <-- Añadido
 from .shape_detector import ShapeDetector
 from typing import List
 
@@ -16,10 +17,23 @@ class ShapePassword:
         
         print(f"Sistema de Seguridad Iniciado. Buscando: {self.password[0]}")
 
+        # Variables para FPS
+        prev_time = 0.0
+        fps = 0.0
+
         while self.current_step < len(self.password):
             ret, frame = cap.read()
             if not ret: break
             frame = cv2.flip(frame, 1)
+
+            # --- FPS ---
+            cur_t = time.time()
+            if prev_time > 0:
+                dt = cur_t - prev_time
+                if dt > 0:
+                    inst_fps = 1.0 / dt
+                    fps = (0.9 * fps + 0.1 * inst_fps) if fps > 0 else inst_fps
+            prev_time = cur_t
 
             target_shape = self.password[self.current_step]
             detected_shapes = detector.detect_all(frame)
@@ -43,6 +57,13 @@ class ShapePassword:
             # --- Feedback Visual ---
             self._draw_ui(frame, detected_shapes, target_shape)
             
+            # Dibujar FPS en esquina superior derecha
+            fps_text = f"FPS: {fps:.1f}"
+            (tw, th), _ = cv2.getTextSize(fps_text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
+            x = frame.shape[1] - tw - 10
+            y = 10 + th
+            cv2.putText(frame, fps_text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
+
             cv2.imshow("Sistema de Seguridad", frame)
             if cv2.waitKey(1) & 0xFF == ord("q"): break
 

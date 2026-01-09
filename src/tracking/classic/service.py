@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import cv2
 import joblib
+import time  # <-- Añadido
 from pathlib import Path
 from detection.detector import Detector 
 from processing.eyes_features import HOGFeatureExtractor, HOGConfig
@@ -43,6 +44,10 @@ def run_classic_tracker():
     last_prob = 0.0
     text_color = (0, 255, 0) # Verde por defecto
 
+    # Variables para FPS
+    prev_time = 0.0
+    fps = 0.0
+
     print(f"Sistema iniciado. La predicción se actualizará cada {update_interval} frames.")
 
     while True:
@@ -50,6 +55,16 @@ def run_classic_tracker():
         if not ret: break
 
         frame = cv2.flip(frame, 1)
+
+        # --- FPS ---
+        cur_t = time.time()
+        if prev_time > 0:
+            dt = cur_t - prev_time
+            if dt > 0:
+                inst_fps = 1.0 / dt
+                fps = (0.9 * fps + 0.1 * inst_fps) if fps > 0 else inst_fps
+        prev_time = cur_t
+
         face_rect, eyes_rects, mouth_rect = detector_facial.detect(frame)
         
         # --- Lógica de Inferencia Automática ---
@@ -99,6 +114,13 @@ def run_classic_tracker():
         # 4. UI: Barra de progreso para el siguiente escaneo
         progress = (frame_count % update_interval) / update_interval
         cv2.rectangle(frame, (10, 90), (10 + int(390 * progress), 95), (255, 255, 0), -1)
+
+        # --- Dibujar FPS en esquina superior derecha ---
+        fps_text = f"FPS: {fps:.1f}"
+        (tw, th), _ = cv2.getTextSize(fps_text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
+        x = frame.shape[1] - tw - 10
+        y = 10 + th
+        cv2.putText(frame, fps_text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
 
         cv2.imshow("Monitor de Somnolencia", frame)
         

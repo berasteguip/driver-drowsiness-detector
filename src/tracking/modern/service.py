@@ -11,6 +11,7 @@ except ImportError:
 
 import cv2
 import mediapipe as mp
+import time  # <-- Añadido
 print("DEBUG: modern/service.py - imports done")
 
 # ----------------- Main -----------------
@@ -33,6 +34,10 @@ def run_modern_tracker():
     driver_status = "ACTIVE"
     color_status = (0, 255, 0) # Verde por defecto
 
+    # Variables para FPS
+    prev_time = 0.0
+    fps = 0.0
+
     mp_drawing = mp.solutions.drawing_utils
     mp_face_mesh = mp.solutions.face_mesh
     mp_styles = mp.solutions.drawing_styles
@@ -53,6 +58,15 @@ def run_modern_tracker():
             
             # Efecto espejo para sensación natural
             frame = cv2.flip(frame, 1)
+
+            # --- FPS ---
+            cur_t = time.time()
+            if prev_time > 0:
+                dt = cur_t - prev_time
+                if dt > 0:
+                    inst_fps = 1.0 / dt
+                    fps = (0.9 * fps + 0.1 * inst_fps) if fps > 0 else inst_fps
+            prev_time = cur_t
 
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = face_mesh.process(rgb)
@@ -133,6 +147,13 @@ def run_modern_tracker():
                 cv2.rectangle(frame, (10, 50), (300, 100), (0, 0, 0), -1)
                 cv2.putText(frame, driver_status, (20, 90), 
                             cv2.FONT_HERSHEY_SIMPLEX, 1.2, color_status, 3)
+
+            # --- Dibujar FPS en esquina superior derecha ---
+            fps_text = f"FPS: {fps:.1f}"
+            (tw, th), _ = cv2.getTextSize(fps_text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
+            x = frame.shape[1] - tw - 10
+            y = 10 + th
+            cv2.putText(frame, fps_text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
 
             cv2.imshow("Monitor de Fatiga (MediaPipe)", frame)
             
