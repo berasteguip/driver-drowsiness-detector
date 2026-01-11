@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+############################
+from detection.face_detection import FaceDetector
+from detection.eye_detection import EyeDetector
+from processing.preprocess import FacePreprocessor, EyePreprocessor
+############################
+
 import cv2
 import joblib
 import time  # <-- Añadido
@@ -20,6 +26,42 @@ def load_models(models_dir: Path):
     return joblib.load(left_model_path), joblib.load(right_model_path)
 
 def run_classic_tracker():
+
+    ############################
+    face_detector = FaceDetector()
+    preprocessor = FacePreprocessor()
+    eye_detector = EyeDetector()
+    eye_preprocessor = EyePreprocessor()
+
+    img = cv2.imread("data\\face\\raw\\active\i0447.png")
+
+    cv2.imshow("Raw image", img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()    
+    cv2.imwrite("data\\example\\raw.png", img)
+
+
+    face_box = face_detector.detect(img)
+    face_norm = preprocessor(img, face_box)
+
+    cv2.imshow("Processed image", face_norm)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    cv2.imwrite("data\\example\\processed.png", face_norm)
+
+    h, w = img.shape[:2]
+    face_frame = (0, 0, w, h)
+
+    eyes_coords = eye_detector.detect(img, face_frame)
+
+    for i, eye_box in enumerate(eyes_coords):
+        eye_img = eye_preprocessor(img, eye_box)
+        cv2.imshow(f"Processed Eye nº{i}", eye_img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        cv2.imwrite(f"data\\example\\eye{i}.png", eye_img)
+    ############################
+
     models_dir = MODELS_DIR
     
     try:

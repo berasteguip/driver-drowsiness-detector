@@ -87,4 +87,29 @@ def main():
     cv2.destroyAllWindows()
 
 if __name__ == '__main__':
-    main()
+
+    face_detector = FaceDetector()
+    eye_detector = EyeDetector()
+
+
+    img = cv2.imread("data\\face\\raw\\active\i0447.png")
+    
+    cv2.imshow('Img', img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    """
+    # 1. Primero necesitamos el frame de la cara
+    face_frame = face_detector.detect(img)
+    
+    if face_frame is not None:
+        # 2. Detectamos ojos pasando el face_frame
+        eyes_frame = eye_detector.detect(img, face_frame)
+        # 3. Dibujamos
+        eye_detector.draw(img, eyes_frame)
+    else:
+        cv2.putText(img, "Face not found", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+    cv2.imshow('Eye detection', img)
+    if cv2.waitKey(10) == 27: # ESC para salir
+        break"""

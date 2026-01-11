@@ -5,6 +5,7 @@ import imageio
 import copy
 import glob
 import matplotlib.pyplot as plt
+from config import *
 
 def load_images(filenames: List) -> List:
     return [cv2.imread(filename) for filename in filenames]
@@ -17,8 +18,9 @@ def get_chessboard_points(chessboard_shape, dx, dy):
             arr[j*chessboard_shape[0]+i] = [np.float32(j*dx), np.float32(i*dy), np.float32(0)]
     return arr
 
-# todos los archivos .png en la carpeta data/left
-imgs_path = [img_path for img_path in glob.glob("../imgs/calibration/*.jpg")]
+calibration_path = f"{DATA_DIR}\\calibration\\*"
+print(calibration_path)
+imgs_path = [img_path for img_path in glob.glob(calibration_path)]
 imgs = load_images(imgs_path)
 
 corners = [cv2.findChessboardCorners(img, (4, 6)) for img in imgs]
