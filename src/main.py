@@ -76,8 +76,10 @@ def main():
     print(f"{Colors.HEADER}=== DRIVER DROWSINESS DETECTOR ==={Colors.ENDC}")
     
     try:
+        
         if not run_security_phase():
             sys.exit(1)
+        
             
         run_tracking_phase()
         

@@ -92,5 +92,5 @@ class ShapePassword:
 
 if __name__ == "__main__":
     
-    password = ShapePassword()
+    password = ShapePassword([])
     password.start()

@@ -60,6 +60,7 @@ class EyeDetector:
 
 
 def main():
+
     webcam = cv2.VideoCapture(0)
     face_detector = FaceDetector()
     eye_detector = EyeDetector()
@@ -87,4 +88,6 @@ def main():
     cv2.destroyAllWindows()
 
 if __name__ == '__main__':
+
+
     main()
