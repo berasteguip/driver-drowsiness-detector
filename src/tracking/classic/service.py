@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+############################
+from detection.face_detection import FaceDetector
+from detection.eye_detection import EyeDetector
+from processing.preprocess import FacePreprocessor, EyePreprocessor
+############################
+
 import cv2
 import joblib
 import time  # <-- Añadido
