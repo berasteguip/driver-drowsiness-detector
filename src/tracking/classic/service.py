@@ -26,7 +26,6 @@ def load_models(models_dir: Path):
     return joblib.load(left_model_path), joblib.load(right_model_path)
 
 def run_classic_tracker():
-
     models_dir = MODELS_DIR
     
     try:
