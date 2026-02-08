@@ -1,13 +1,13 @@
-import sys
+﻿import sys
 import time
 
-# --- IMPORTS DE BLOQUES ---
-# Bloque A: Seguridad
+# --- BLOCK IMPORTS ---
+# Block A: Security
 from config import validate_paths
 from security.shape_auth.service import ShapePassword
 from security.hand_auth.service import HandPassword
 
-# Bloque B: Tracking
+# Block B: Tracking
 from tracking.classic.service import run_classic_tracker
 from tracking.modern.service import run_modern_tracker
 
@@ -25,43 +25,43 @@ def get_user_choice(prompt: str, valid_options: list) -> str:
         choice = input(f"{Colors.BLUE}{prompt} {valid_options}: {Colors.ENDC}").strip()
         if choice in valid_options:
             return choice
-        print(f"{Colors.WARNING}Opción no válida.{Colors.ENDC}")
+        print(f"{Colors.WARNING}Invalid option.{Colors.ENDC}")
 
 def run_security_phase():
-    print(f"\n{Colors.BOLD}--- BLOQUE A: SEGURIDAD ---{Colors.ENDC}")
-    print("Seleccione método de desbloqueo:")
-    print("1. Patrones Geométricos (Formas) [Opción A1]")
-    print("2. Gestos Manuales (Manos)       [Opción A2]")
+    print(f"\n{Colors.BOLD}--- BLOCK A: SECURITY ---{Colors.ENDC}")
+    print("Select unlock method:")
+    print("1. Geometric Patterns (Shapes) [Option A1]")
+    print("2. Hand Gestures (Hands)       [Option A2]")
     
-    choice = get_user_choice("Opción:", ['1', '2'])
+    choice = get_user_choice("Option:", ['1', '2'])
     
-    print(f"\n{Colors.GREEN}Iniciando autenticación...{Colors.ENDC}")
+    print(f"\n{Colors.GREEN}Starting authentication...{Colors.ENDC}")
     time.sleep(0.5)
 
     try:
         if choice == '1':
-            auth = ShapePassword(["CUADRADO", "CIRCULO", "TRIANGULO", "PENTAGONO"])
+            auth = ShapePassword(["SQUARE", "CIRCLE", "TRIANGLE", "PENTAGON"])
             auth.start()
         else:
             auth = HandPassword(["ROCK", "PEACE", "SURF", "VULCAN"])
             auth.start()
             
             
-        print(f"\n{Colors.BOLD}{Colors.GREEN}>> ACCESO CONCEDIDO <<{Colors.ENDC}")
+        print(f"\n{Colors.BOLD}{Colors.GREEN}>> ACCESS GRANTED <<{Colors.ENDC}")
         return True
     except Exception as e:
-        print(f"\n{Colors.FAIL}Fallo de seguridad: {e}{Colors.ENDC}")
+        print(f"\n{Colors.FAIL}Security failure: {e}{Colors.ENDC}")
         return False
 
 def run_tracking_phase():
-    print(f"\n{Colors.BOLD}--- BLOQUE B: MONITOREO ---{Colors.ENDC}")
-    print("Seleccione motor de tracking:")
-    print("1. Tracker Clásico (HOG + XGBoost) [Opción B1]")
-    print("2. Tracker Moderno (MediaPipe)     [Opción B2]")
+    print(f"\n{Colors.BOLD}--- BLOCK B: MONITORING ---{Colors.ENDC}")
+    print("Select tracking engine:")
+    print("1. Classic Tracker (HOG + XGBoost) [Option B1]")
+    print("2. Modern Tracker (MediaPipe)      [Option B2]")
     
-    choice = get_user_choice("Opción:", ['1', '2'])
+    choice = get_user_choice("Option:", ['1', '2'])
     
-    print(f"\n{Colors.GREEN}Arrancando motor de visión... (ESC para salir){Colors.ENDC}")
+    print(f"\n{Colors.GREEN}Starting vision engine... (ESC to exit){Colors.ENDC}")
     time.sleep(0.5)
     
     if choice == '1':
@@ -69,21 +69,27 @@ def run_tracking_phase():
     else:
         run_modern_tracker()
 
+def is_complete_mode(args: list) -> bool:
+    return any(arg.lower() == "complete" for arg in args)
+
 def main():
-    print("Validando archivos del sistema...")
+    print("Validating system files...")
     validate_paths()
     
     print(f"{Colors.HEADER}=== DRIVER DROWSINESS DETECTOR ==={Colors.ENDC}")
     
     try:
-        
-        if not run_security_phase():
-            sys.exit(1)
+        complete_mode = is_complete_mode(sys.argv[1:])
+        if complete_mode:
+            if not run_security_phase():
+                sys.exit(1)
+        else:
+            print(f"{Colors.WARNING}Fast mode: skipping the security block.{Colors.ENDC}")
             
         run_tracking_phase()
         
     except KeyboardInterrupt:
-        print("\nCierre forzado por usuario.")
+        print("\nForced shutdown by user.")
         sys.exit(0)
 
 if __name__ == '__main__':

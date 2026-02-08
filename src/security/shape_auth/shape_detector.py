@@ -1,19 +1,19 @@
-import cv2
+﻿import cv2
 import numpy as np
 from dataclasses import dataclass
 from typing import List, Tuple, Optional
 from enum import Enum
 
 class ShapeName(Enum):
-    TRIANGULO = "TRIANGULO"
-    CUADRADO = "CUADRADO"
-    RECTANGULO = "RECTANGULO"
-    PENTAGONO = "PENTAGONO"
-    CIRCULO = "CIRCULO" 
+    TRIANGLE = "TRIANGLE"
+    SQUARE = "SQUARE"
+    RECTANGLE = "RECTANGLE"
+    PENTAGON = "PENTAGON"
+    CIRCLE = "CIRCLE" 
 
 @dataclass
 class DetectedShape:
-    """Clase de datos para transferir la información de una figura detectada."""
+    """Data class to transfer information about a detected shape."""
     label: ShapeName
     box: Tuple[int, int, int, int]  # x, y, w, h
     centroid: Tuple[int, int]
@@ -21,43 +21,43 @@ class DetectedShape:
 
 class ShapeDetector:
     """
-    Detector de formas geométricas robustas para Visión por Ordenador.
-    Figuras soportadas: Triángulo, Cuadrado, Rectángulo, Pentágono, Círculo.
+    Robust geometric shape detector for Computer Vision.
+    Supported shapes: Triangle, Square, Rectangle, Pentagon, Circle.
     """
 
     def __init__(self, min_area: int = 3000, epsilon_factor: float = 0.05):
         """
-        :param min_area: Área mínima en píxeles para considerar una figura (filtra ruido).
-        :param epsilon_factor: Precisión de la aproximación poligonal (0.03 - 0.05 es estándar).
+        :param min_area: Minimum area in pixels to consider a shape (filters noise).
+        :param epsilon_factor: Polygon approximation precision (0.03 - 0.05 is standard).
         """
         self.min_area = min_area
         self.epsilon_factor = epsilon_factor
 
     def detect_all(self, image: np.ndarray) -> List[DetectedShape]:
         """
-        Procesa la imagen y detecta todas las figuras válidas presentes.
+        Process the image and detect all valid shapes present.
         """
         if image is None:
             return []
 
-        # 1. Preprocesamiento (Gris -> Blur -> Umbral)
+        # 1. Preprocessing (Gray -> Blur -> Threshold)
         processed = self._preprocess(image)
 
-        # 2. Extracción de contornos
-        # Usamos RETR_EXTERNAL para ignorar agujeros dentro de las figuras
+        # 2. Contour extraction
+        # Use RETR_EXTERNAL to ignore holes inside shapes
         contours, _ = cv2.findContours(processed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         results = []
         for c in contours:
-            # Filtrar ruido por tamaño
+            # Filter noise by size
             if cv2.contourArea(c) < self.min_area:
                 continue
 
-            # Identificar la forma
+            # Identify the shape
             shape_label = self._identify_shape(c)
             
             if shape_label:
-                # Calcular metadatos para visualización (Bounding Box y Centroide)
+                # Compute metadata for visualization (Bounding Box and Centroid)
                 x, y, w, h = cv2.boundingRect(c)
                 
                 cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -81,43 +81,43 @@ class ShapeDetector:
         return results
 
     def _preprocess(self, image: np.ndarray) -> np.ndarray:
-        """Convierte a escala de grises, suaviza y binariza la imagen."""
+        """Convert to grayscale, smooth, and binarize the image."""
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
         
-        # IMPORTANTE: 
-        # Usa THRESH_BINARY_INV si tus figuras son NEGRAS sobre fondo BLANCO (papel).
-        # Usa THRESH_BINARY si tus figuras son BLANCAS sobre fondo OSCURO.
+        # IMPORTANT:
+        # Use THRESH_BINARY_INV if your shapes are BLACK on a WHITE background (paper).
+        # Use THRESH_BINARY if your shapes are WHITE on a DARK background.
         _, thresh = cv2.threshold(blurred, 60, 255, cv2.THRESH_BINARY_INV)
         return thresh
 
     def _identify_shape(self, contour: np.ndarray) -> Optional[str]:
         peri = cv2.arcLength(contour, True)
-        # Bajamos un poco el epsilon para que el círculo no se "aplaste" a cuadrado tan fácil
+        # Lower epsilon slightly so the circle doesn't collapse into a square too easily
         approx = cv2.approxPolyDP(contour, 0.03 * peri, True)
         num_vertices = len(approx)
     
-        # 1. CÁLCULO DE CIRCULARIDAD (Independiente de los vértices)
+        # 1. CIRCULARITY CALCULATION (independent of vertices)
         area = cv2.contourArea(contour)
-        # Fórmula: 4 * pi * Area / Perímetro^2
+        # Formula: 4 * pi * Area / Perimeter^2
         if peri > 0:
             circularity = (4 * np.pi * area) / (peri ** 2)
         else:
             circularity = 0
 
-        # 2. PRIORIDAD: Si es muy redondo, ES UN CÍRCULO (aunque tenga 4 vértices)
-        if circularity > 0.82: # Un círculo perfecto es 1.0, un cuadrado es ~0.78
-            return "CIRCULO"
+        # 2. PRIORITY: If it's very round, it's a CIRCLE (even if it has 4 vertices)
+        if circularity > 0.82: # A perfect circle is 1.0, a square is ~0.78
+            return "CIRCLE"
 
-        # 3. Si no es redondo, clasificamos por vértices
+        # 3. If not round, classify by vertices
         if num_vertices == 3:
-            return "TRIANGULO"
+            return "TRIANGLE"
         elif num_vertices == 4:
             x, y, w, h = cv2.boundingRect(approx)
             ar = w / float(h)
-            return "CUADRADO" if 0.90 <= ar <= 1.10 else "RECTANGULO"
+            return "SQUARE" if 0.90 <= ar <= 1.10 else "RECTANGLE"
         elif num_vertices == 5:
             if cv2.isContourConvex(approx):
-                return "PENTAGONO"
+                return "PENTAGON"
             
         return None

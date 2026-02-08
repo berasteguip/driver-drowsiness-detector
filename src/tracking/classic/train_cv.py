@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from pathlib import Path
 import numpy as np
 import xgboost as xgb
@@ -8,7 +8,7 @@ from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from sklearn.metrics import roc_auc_score, f1_score
 from tqdm import tqdm
 
-# --- CONFIGURACIÓN DE GRIDS ---
+# --- GRID CONFIGURATION ---
 GRIDS = {
     "left": {
         'n_estimators': [400, 600],
@@ -33,54 +33,68 @@ GRIDS = {
 def project_root_from_this_file() -> Path:
     return Path(__file__).resolve().parents[3]
 
-def load_side_dataset(side: str, oversample_rate: float = 0.3) -> tuple[np.ndarray, np.ndarray]:
-    root = project_root_from_this_file()
-    base = root / "Proyecto Final" / "data" / "features" / side
+def find_features_root(start: Path) -> Path:
+    """
+    Walk up the directory tree looking for data/features.
+    This avoids hardcoding any project folder name.
+    """
+    for parent in [start] + list(start.parents):
+        candidate = parent / "data" / "features"
+        if candidate.exists():
+            return candidate
+    raise FileNotFoundError(
+        "Could not find data/features by walking up from this file. "
+        "Please ensure the data folder exists."
+    )
 
-    # Carga de archivos
+def load_side_dataset(side: str, oversample_rate: float = 0.3) -> tuple[np.ndarray, np.ndarray]:
+    features_root = find_features_root(Path(__file__).resolve())
+    base = features_root / side
+
+    # File loading
     a = np.load(base / "active" / "features_hog.npz", allow_pickle=True)
     d = np.load(base / "drowsy" / "features_hog.npz", allow_pickle=True)
 
     X_active, y_active = a["X"], a["y"]
     X_drowsy, y_drowsy = d["X"], d["y"]
 
-    # --- LÓGICA DE DUPLICACIÓN (30%) ---
+    # --- DUPLICATION LOGIC (30%) ---
     num_drowsy = len(y_drowsy)
     num_to_duplicate = int(num_drowsy * oversample_rate)
     
     if num_to_duplicate > 0:
-        # Seleccionamos índices aleatorios de la carpeta drowsy
+        # Select random indices from the drowsy folder
         rng = np.random.default_rng(42)
         idx_to_dup = rng.choice(num_drowsy, size=num_to_duplicate, replace=False)
         
-        # Duplicamos las muestras seleccionadas
+        # Duplicate the selected samples
         X_dup = X_drowsy[idx_to_dup]
         y_dup = y_drowsy[idx_to_dup]
         
-        # Concatenamos a los datos drowsy originales
+        # Concatenate with the original drowsy data
         X_drowsy = np.vstack([X_drowsy, X_dup])
         y_drowsy = np.concatenate([y_drowsy, y_dup])
         
-        print(f"[{side.upper()}] Oversampling: {num_to_duplicate} muestras duplicadas en clase 'drowsy'.")
+        print(f"[{side.upper()}] Oversampling: {num_to_duplicate} duplicated samples in 'drowsy' class.")
 
-    # Unión final
+    # Final merge
     X = np.vstack([X_active, X_drowsy]).astype(np.float32)
     y = np.concatenate([y_active, y_drowsy]).astype(np.int64)
 
-    # Mezcla (Shuffle) para que el entrenamiento sea estable
+    # Shuffle so training is stable
     idx = np.random.default_rng(42).permutation(len(y))
     return X[idx], y[idx]
 
 def run_grid_search(side: str, param_grid: dict):
     X, y = load_side_dataset(side)
     
-    # El scale_pos_weight se recalcula automáticamente con las nuevas cantidades
+    # scale_pos_weight is recalculated automatically with the new counts
     n_pos = int((y == 1).sum())
     n_neg = int((y == 0).sum())
     spw = (n_neg / n_pos) if n_pos > 0 else 1.0
 
     print(f"\n" + "="*60)
-    print(f" INICIANDO GRID SEARCH: {side.upper()} ")
+    print(f" STARTING GRID SEARCH: {side.upper()} ")
     print(f"="*60)
     
     base_model = xgb.XGBClassifier(
@@ -103,7 +117,7 @@ def run_grid_search(side: str, param_grid: dict):
     )
 
     grid_search.fit(X, y)
-    print(f"\n[RESULTADOS {side.upper()}] -> Mejor ROC_AUC: {grid_search.best_score_:.4f}")
+    print(f"\n[RESULTS {side.upper()}] -> Best ROC_AUC: {grid_search.best_score_:.4f}")
     return grid_search.best_params_
 
 def train_final_and_save(side: str, best_params: dict) -> None:
@@ -136,7 +150,7 @@ if __name__ == "__main__":
         best_configs[side] = run_grid_search(side, GRIDS[side])
 
     print("\n" + "#"*60)
-    print(" RESUMEN FINAL ")
+    print(" FINAL SUMMARY ")
     print("#"*60)
     for side, params in best_configs.items():
         print(f"{side.upper()}: {params}")

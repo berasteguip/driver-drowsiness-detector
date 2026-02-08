@@ -1,4 +1,4 @@
-import cv2
+﻿import cv2
 from typing import List
 import numpy as np
 import imageio
@@ -35,7 +35,7 @@ corners_refined = [cv2.cornerSubPix(i, cor[1], (4,6), (-1, -1), criteria) if cor
 
 
 # --------------------------
-# DIBUJAR ESQUINAS
+# DRAW CORNERS
 imgs_copy = copy.deepcopy(imgs)
 
 for i in range(len(imgs_copy)):

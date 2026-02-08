@@ -1,10 +1,10 @@
-import os
+﻿import os
 import cv2
 from config import *
 
 class FaceDetector:
     '''
-    Clase que detecta un único rostro en una imagen y lo dibuja
+    Class that detects a single face in an image and draws it
     '''
     def __init__(self):
         abs_path = FACE_CASCADE_PATH
@@ -22,7 +22,7 @@ class FaceDetector:
         if len(faces) == 0:
             return None
             
-        # Nos quedamos con el más grande (el usuario principal)
+        # Keep the largest one (primary user)
         largest_face = max(faces, key=lambda f: f[2] * f[3])
         return largest_face
     
@@ -38,7 +38,7 @@ class FaceDetector:
 
 def main():
     '''
-    Función principal que ejecuta el detector de rostros
+    Main function that runs the face detector
     '''
     webcam = cv2.VideoCapture(0)
     face_detector = FaceDetector()

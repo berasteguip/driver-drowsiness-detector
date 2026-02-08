@@ -1,82 +1,92 @@
-# Driver Drowsiness Detector
+﻿# Driver Drowsiness Detector
 
-Este proyecto es un sistema de visión por computadora diseñado para detectar la somnolencia del conductor en tiempo real. Integra módulos de **autenticación biométrica** y dos motores de **monitoreo de fatiga** configurables.
+This project is a computer vision system designed to detect driver drowsiness in real time. It integrates **biometric authentication** modules and two configurable **fatigue monitoring** engines.
 
-## 📋 Tabla de Contenidos
-- [Instalación](#-instalación)
-- [Ejecución](#-ejecución)
-- [Arquitectura del Sistema](#-arquitectura-del-sistema)
-- [Estructura del Proyecto](#-estructura-del-proyecto)
+## Table of Contents
+- [Installation](#installation)
+- [Running](#running)
+- [System Architecture](#system-architecture)
+- [Project Structure](#project-structure)
+- [Technical Notes](#technical-notes)
 
 ---
 
-## ⚙️ Instalación
+## Installation
 
-El sistema es compatible con **Python 3.11.10**.
+The system is compatible with **Python 3.11.10**.
 
-1. **Clonar el repositorio:**
+1. Clone the repository:
    ```bash
-   git clone <url-del-repo>
+   git clone <repo-url>
    cd driver-drowsiness-detector
-Configurar el entorno virtual:
+   ```
+2. Configure the virtual environment:
+   ```bash
+   python -m venv venv
+   # On Windows:
+   venv\Scripts\activate
+   # On Linux/Mac:
+   source venv/bin/activate
+   ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-Bash
+Main libraries include OpenCV, MediaPipe, XGBoost, and Scikit-learn.
 
-python -m venv venv
-# En Windows:
-venv\Scripts\activate
-# En Linux/Mac:
-source venv/bin/activate
-Instalar dependencias:
+## Running
 
-Bash
+The system is managed from the main script, which coordinates the transition between the security phase and the monitoring phase:
 
-pip install -r requirements.txt
-Las librerías principales incluyen OpenCV, MediaPipe, XGBoost y Scikit-learn.
-
-🚀 Ejecución
-El sistema se gestiona desde el script principal, que coordina la transición entre la fase de seguridad y la de monitoreo:
-
-Bash
-
+```bash
 python src/main.py
-Al iniciar, el programa validará que los archivos críticos (como los modelos .pkl) existan en las rutas configuradas antes de mostrar el menú de opciones.
+```
 
-🧠 Arquitectura del Sistema
-El flujo de trabajo se divide en dos bloques principales:
+At startup, the program validates that critical files (such as .pkl models) exist in the configured paths before showing the options menu.
 
-1. Bloque A: Seguridad (Autenticación)
-Antes de activar el tracker, el usuario debe superar un desafío de seguridad:
+## System Architecture
 
-A1 - Patrones Geométricos (Shape Auth): Utiliza OpenCV para detectar contornos y clasificar formas geométricas (Triángulo, Cuadrado, Círculo, etc.). El usuario debe presentar una secuencia específica frente a la cámara que sea estable por al menos 15 frames.
+The workflow is divided into two main blocks:
 
-A2 - Gestos Manuales (Hand Auth): Utiliza MediaPipe Hands para identificar signos manuales como ROCK, PEACE o VULCAN. La entrada se valida contra una lista predefinida para conceder el acceso.
+1. Block A: Security (Authentication)
+Before enabling the tracker, the user must pass a security challenge:
 
-2. Bloque B: Monitoreo (Tracking)
-Tras la autenticación, se selecciona el motor de detección de somnolencia:
+A1 - Geometric Patterns (Shape Auth): Uses OpenCV to detect contours and classify geometric shapes (Triangle, Square, Circle, etc.). The user must present a specific sequence in front of the camera that remains stable for at least 15 frames.
 
-B1 - Tracker Clásico (XGBoost): Emplea Haar Cascades para detectar el rostro y los ojos. Extrae características mediante HOG (Histogram of Oriented Gradients) y utiliza un modelo XGBoost para predecir la probabilidad de cansancio basándose en el estado del ojo. La inferencia se refresca cada 30 frames para optimizar el rendimiento.
+A2 - Hand Gestures (Hand Auth): Uses MediaPipe Hands to identify hand signs such as ROCK, PEACE, or VULCAN. The input is validated against a predefined list to grant access.
 
-B2 - Tracker Moderno (MediaPipe): Utiliza la malla facial de MediaPipe para obtener 468 puntos clave. Calcula métricas geométricas precisas como:
+2. Block B: Monitoring (Tracking)
+After authentication, the drowsiness detection engine is selected:
 
-EAR (Eye Aspect Ratio): Para detectar el parpadeo y ojos cerrados.
+B1 - Classic Tracker (XGBoost): Uses Haar Cascades to detect the face and eyes. Extracts features using HOG (Histogram of Oriented Gradients) and uses an XGBoost model to predict fatigue probability based on eye state. Inference refreshes every 30 frames to optimize performance.
 
-MAR (Mouth Aspect Ratio): Para identificar bostezos.
+B2 - Modern Tracker (MediaPipe): Uses the MediaPipe face mesh to obtain 468 key points. Calculates precise geometric metrics such as:
 
-PERCLOS: Calcula el porcentaje de tiempo que los ojos permanecen cerrados en una ventana de 60 segundos para determinar fatiga acumulada.
+EAR (Eye Aspect Ratio): To detect blinking and closed eyes.
 
+MAR (Mouth Aspect Ratio): To identify yawns.
+
+PERCLOS: Calculates the percentage of time the eyes remain closed in a 60-second window to determine accumulated fatigue.
+
+## Project Structure
+
+```
 driver-drowsiness-detector/
-├── models/                  # Modelos XGBoost (.pkl) y Haar Cascades (.xml)
-├── src/
-│   ├── main.py              # Orquestador del sistema
-│   ├── config.py            # Gestión de rutas absolutas y validación
-│   ├── calibration.py       # Calibración de cámara mediante tablero de ajedrez
-│   ├── security/            # Módulos de autenticación por gestos y formas
-│   ├── tracking/            # Implementaciones de trackers (Classic vs Modern)
-│   ├── detection/           # Detectores faciales y de componentes
-│   └── processing/          # Preprocesamiento de imágenes y extracción de features
-└── requirements.txt         # Lista de dependencias y versiones
-Notas Técnicas
-Calibración: src/calibration.py utiliza funciones de OpenCV para obtener la matriz intrínseca y coeficientes de distorsión de la cámara.
+|-- models/                  # XGBoost models (.pkl) and Haar Cascades (.xml)
+|-- src/
+|   |-- main.py              # System orchestrator
+|   |-- config.py            # Absolute path management and validation
+|   |-- calibration.py       # Camera calibration using a chessboard
+|   |-- security/            # Gesture and shape authentication modules
+|   |-- tracking/            # Tracker implementations (Classic vs Modern)
+|   |-- detection/           # Face and component detectors
+|   `-- processing/          # Image preprocessing and feature extraction
+`-- requirements.txt         # Dependency list and versions
+```
 
-Procesamiento: El sistema incluye herramientas en src/processing/data_processing.py para normalizar imágenes de rostros y ojos antes del entrenamiento o inferencia.
+## Technical Notes
+
+Calibration: src/calibration.py uses OpenCV functions to obtain the camera intrinsic matrix and distortion coefficients.
+
+Processing: The system includes tools in src/processing/data_processing.py to normalize face and eye images before training or inference.

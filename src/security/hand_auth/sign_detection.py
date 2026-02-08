@@ -1,4 +1,4 @@
-import cv2
+﻿import cv2
 import mediapipe as mp
 import numpy as np
 import math
@@ -11,7 +11,7 @@ def hand_rectangle(frame, hand_landmarks):
 
     xmin, xmax, ymin, ymax = hand_limits(hand_landmarks)
 
-    # Pasar a coordenadas de imagen
+    # Convert to image coordinates
     x1 = int(xmin.x * w) - MARGIN
     x2 = int(xmax.x * w) + MARGIN
     y1 = int(ymin.y * h) - MARGIN
@@ -97,7 +97,7 @@ def horizontality(tip1, tip2):
     if norm == 0:
         return
     
-    # |sin(theta)| = |dy| / ||v||  (theta = ángulo respecto a horizontal)
+    # |sin(theta)| = |dy| / ||v||  (theta = angle relative to horizontal)
     sin_theta = abs(dy) / norm
     return sin_theta
 
@@ -120,32 +120,32 @@ def hand_scale(pts):
     return dist_lm(pts[0], pts[5]) + 1e-9
 
 def rect_aspect_ratio_from_landmarks(hand_landmarks):
-    # Ratio altura / anchura del bounding box en coordenadas normalizadas
+    # Height / width ratio of the bounding box in normalized coordinates
     xmin, xmax, ymin, ymax = hand_limits(hand_landmarks)
     width = (xmax.x - xmin.x) + 1e-9
     height = (ymax.y - ymin.y) + 1e-9
     return height / width
 
 #####################
-# Signos con la mano
+# Hand signs
 #####################
 
 def detect_surf(hand_landmarks, length_threshold = 0.7, max_sin_angle = 0.5, verbose = False):
     """
-    Condiciones:
-    1) Pulgar y meñique muy separados (ratio sobre diagonal)
-    2) Segmento pulgar-meñique aproximadamente horizontal (sin(theta) pequeño)
-    3) Las dos yemas más altas (menor y) deben ser pulgar y meñique (en cualquier orden)
+    Conditions:
+    1) Thumb and pinky very far apart (ratio over diagonal)
+    2) Thumb-pinky segment roughly horizontal (small sin(theta))
+    3) The two highest tips (smallest y) must be thumb and pinky (any order)
     """
 
-    # (3) Chequeo de yemas "más altas"
+    # (3) Check the "highest" tips
     tips = list(get_tips(hand_landmarks).items())
-    tips_sorted = sorted(tips, key=lambda x: x[1].y)  # menor y = más arriba
+    tips_sorted = sorted(tips, key=lambda x: x[1].y)  # smaller y = higher
     top2 = {tips_sorted[0][0], tips_sorted[1][0]}
     if top2 != {"p", "m"}:
         return False
 
-    # (1) + (2) Chequeos originales
+    # (1) + (2) Original checks
     th_pk_dist, diag = finger_dist(hand_landmarks, 'p', 'm')
     diag_ratio = th_pk_dist / (diag + 1e-9)
 
@@ -154,8 +154,8 @@ def detect_surf(hand_landmarks, length_threshold = 0.7, max_sin_angle = 0.5, ver
     ang = horizontality(thumb_tip, pinky_tip)
 
     if verbose:
-        print('Distancia pulgar meñique', th_pk_dist)
-        print('Diagonal marco', diag)
+        print('Thumb-pinky distance', th_pk_dist)
+        print('Frame diagonal', diag)
         print('Ratio', diag_ratio)
         print('sin(theta)', ang)
 
@@ -176,12 +176,12 @@ def detect_rock(hand_landmarks):
 
 def detect_peace(hand_landmarks, min_vertical_ratio=2.0):
     """
-    Además de tu lógica:
-    - El bounding box de la mano debe ser claramente vertical:
-      altura/anchura >= 2.0  (equivalente a al menos 1:2 en anchura:altura)
+    In addition to your logic:
+    - The hand bounding box must be clearly vertical:
+      height/width >= 2.0  (equivalent to at least 1:2 in width:height)
     """
 
-    # Chequeo de rectángulo vertical (altura/anchura >= 2)
+    # Vertical rectangle check (height/width >= 2)
     aspect = rect_aspect_ratio_from_landmarks(hand_landmarks)
     if aspect < min_vertical_ratio:
         return False
@@ -206,7 +206,7 @@ def detect_peace(hand_landmarks, min_vertical_ratio=2.0):
 
     return dst / diag > 0.3
 
-# Mano de alien (Spok)
+# Alien hand (Spock)
 def detect_vulcan(hand_landmarks,
                   pair_thr=0.30,
                   gap_thr=0.55,
@@ -270,7 +270,7 @@ if __name__ == "__main__":
     cap = cv2.VideoCapture(0)
 
     with mp_hands.Hands(
-        static_image_mode=False,      # Vídeo (no imágenes sueltas)
+        static_image_mode=False,      # Video (not still images)
         max_num_hands=1,
         min_detection_confidence=0.5,
         min_tracking_confidence=0.5

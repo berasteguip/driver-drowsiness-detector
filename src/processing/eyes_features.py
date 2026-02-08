@@ -1,6 +1,6 @@
-# features.py  (adaptado para rutas con caracteres Unicode en Windows)
-# Lee imágenes con np.fromfile + cv2.imdecode para evitar fallos de cv2.imread
-# Guarda .npz en: <PROYECTO_FINAL>/data/features/{left,right}/{active,drowsy}/features_hog.npz
+﻿# eyes_features.py (adapted for Windows Unicode paths)
+# Reads images with np.fromfile + cv2.imdecode to avoid cv2.imread failures
+# Saves .npz to: <FINAL_PROJECT>/data/features/{left,right}/{active,drowsy}/features_hog.npz
 
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ class HOGFeatureExtractor:
 
 
 def project_root_from_this_file() -> Path:
-    # .../Proyecto Final/driver-drowsiness-detector/src/processing/features.py
+    # .../Final Project/driver-drowsiness-detector/src/processing/features.py
     return Path(__file__).resolve().parents[3]
 
 

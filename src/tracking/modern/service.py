@@ -1,9 +1,9 @@
-print("DEBUG: modern/service.py - start")
+﻿print("DEBUG: modern/service.py - start")
 try:
     from .mesh_utils import *
     print("DEBUG: modern/service.py - imported mesh_utils")
 except ImportError:
-    # Fallback por si se ejecuta como script suelto para pruebas
+    # Fallback in case this is run as a standalone script for testing
     import sys
     import os
     sys.path.append(os.path.dirname(__file__))
@@ -11,30 +11,30 @@ except ImportError:
 
 import cv2
 import mediapipe as mp
-import time  # <-- Añadido
+import time  # <-- Added
 print("DEBUG: modern/service.py - imports done")
 
 # ----------------- Main -----------------
 def run_modern_tracker():
     cap = cv2.VideoCapture(0)
 
-    # --- CONFIGURACIÓN DE UMBRALES ---
-    EAR_THRESH = 0.21          # Nivel de apertura para considerar ojo cerrado
-    EAR_CONSEC_FRAMES = 3      # Frames para validar un parpadeo
-    DROWSY_CONSEC_FRAMES = 30  # Frames consecutivos cerrados para alerta de CANSANCIO (aprox 1s)
-    MAR_THRESH = 0.50          # Umbral de boca para bostezo
+    # --- THRESHOLD CONFIGURATION ---
+    EAR_THRESH = 0.21          # Eye opening threshold to consider eye closed
+    EAR_CONSEC_FRAMES = 3      # Frames to validate a blink
+    DROWSY_CONSEC_FRAMES = 30  # Consecutive closed frames for DROWSINESS alert (approx 1s)
+    MAR_THRESH = 0.50          # Mouth threshold for yawn
 
-    # Variables de estado
+    # State variables
     counter_closed = 0
     total_blinks = 0
     perclos_window_sec = 60
     perclos_history = []
     
-    # Estado del conductor
+    # Driver status
     driver_status = "ACTIVE"
-    color_status = (0, 255, 0) # Verde por defecto
+    color_status = (0, 255, 0) # Green by default
 
-    # Variables para FPS
+    # FPS variables
     prev_time = 0.0
     fps = 0.0
 
@@ -42,7 +42,7 @@ def run_modern_tracker():
     mp_face_mesh = mp.solutions.face_mesh
     mp_styles = mp.solutions.drawing_styles
 
-    print("Iniciando Face Mesh...")
+    print("Starting Face Mesh...")
     with mp_face_mesh.FaceMesh(
         static_image_mode=False,
         max_num_faces=1,
@@ -56,7 +56,7 @@ def run_modern_tracker():
             if not ret:
                 break
             
-            # Efecto espejo para sensación natural
+            # Mirror effect for a natural feel
             frame = cv2.flip(frame, 1)
 
             # --- FPS ---
@@ -71,19 +71,19 @@ def run_modern_tracker():
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = face_mesh.process(rgb)
 
-            # Resetear estado por defecto si no hay cara
+            # Reset default status if there is no face
             driver_status = "NO FACE"
-            color_status = (100, 100, 100) # Gris
+            color_status = (100, 100, 100) # Gray
 
             if results.multi_face_landmarks:
                 landmarks = results.multi_face_landmarks[0]
 
-                # 1. Calcular Métricas
+                # 1. Compute metrics
                 EAR = get_ear(frame, landmarks)
                 MAR = get_mar(frame, landmarks)
                 pitch, yaw, roll = get_head_pose(frame, landmarks)
 
-                # 2. Dibujar Mesh (Visualización técnica)
+                # 2. Draw Mesh (technical visualization)
                 mp_drawing.draw_landmarks(
                     frame,
                     landmarks,
@@ -92,39 +92,39 @@ def run_modern_tracker():
                     connection_drawing_spec=mp_styles.get_default_face_mesh_tesselation_style()
                 )
 
-                # Dibujar contornos clave
+                # Draw key contours
                 draw_poly_norm(frame, landmarks, LEFT_EYE,  (0, 255, 0))
                 draw_poly_norm(frame, landmarks, RIGHT_EYE, (0, 255, 0))
                 draw_poly_norm(frame, landmarks, MOUTH,     (0, 0, 255))
 
-                # 3. Lógica de Detección de Somnolencia
+                # 3. Drowsiness detection logic
                 is_closed = EAR < EAR_THRESH
                 is_yawning = MAR > MAR_THRESH
 
                 if is_closed:
                     counter_closed += 1
-                    # Si los ojos están cerrados por muchos frames consecutivos -> Drowsy
+                    # If eyes are closed for many consecutive frames -> Drowsy
                     if counter_closed >= DROWSY_CONSEC_FRAMES:
                         driver_status = "DROWSY"
-                        color_status = (0, 0, 255) # Rojo
+                        color_status = (0, 0, 255) # Red
                 else:
-                    # Si se abren los ojos, chequeamos si fue un parpadeo
+                    # If eyes open, check if it was a blink
                     if counter_closed >= EAR_CONSEC_FRAMES:
                         total_blinks += 1
                     counter_closed = 0
                     
-                    # Si bosteza -> Warning
+                    # If yawning -> Warning
                     if is_yawning:
                         driver_status = "YAWNING"
-                        color_status = (0, 165, 255) # Naranja
+                        color_status = (0, 165, 255) # Orange
                     else:
                         driver_status = "ACTIVE"
-                        color_status = (0, 255, 0) # Verde
+                        color_status = (0, 255, 0) # Green
 
-                # 4. Cálculo de PERCLOS (Histórico)
+                # 4. PERCLOS calculation (history)
                 ts = cv2.getTickCount() / cv2.getTickFrequency()
                 perclos_history.append((ts, is_closed))
-                # Mantener solo los últimos 60 segundos
+                # Keep only the last 60 seconds
                 perclos_history = [(t, c) for (t, c) in perclos_history if ts - t <= perclos_window_sec]
                 
                 if perclos_history:
@@ -133,31 +133,31 @@ def run_modern_tracker():
                 else:
                     perclos = 0.0
 
-                # Si PERCLOS es muy alto (> 0.20), forzamos estado Drowsy también
+                # If PERCLOS is high (> 0.30), force Drowsy state too
                 if perclos > 0.30 and driver_status != "NO FACE":
                     driver_status = "DROWSY (PERCLOS)"
                     color_status = (0, 0, 255)
 
-                # 5. Visualización de Datos
+                # 5. Data visualization
                 info_text = f"EAR: {EAR:.2f} | MAR: {MAR:.2f} | PERCLOS: {perclos:.2f}"
                 cv2.putText(frame, info_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
 
-                # INDICADOR GRANDE DE ESTADO
-                # Dibujamos un rectángulo de fondo para que se lea bien
+                # LARGE STATUS INDICATOR
+                # Draw a background rectangle for readability
                 cv2.rectangle(frame, (10, 50), (300, 100), (0, 0, 0), -1)
                 cv2.putText(frame, driver_status, (20, 90), 
                             cv2.FONT_HERSHEY_SIMPLEX, 1.2, color_status, 3)
 
-            # --- Dibujar FPS en esquina superior derecha ---
+            # --- Draw FPS in the top-right corner ---
             fps_text = f"FPS: {fps:.1f}"
             (tw, th), _ = cv2.getTextSize(fps_text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
             x = frame.shape[1] - tw - 10
             y = 10 + th
             cv2.putText(frame, fps_text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
 
-            cv2.imshow("Monitor de Fatiga (MediaPipe)", frame)
+            cv2.imshow("Fatigue Monitor (MediaPipe)", frame)
             
-            # Salir con ESC
+            # Exit with ESC
             if cv2.waitKey(1) & 0xFF == 27:
                 break
 

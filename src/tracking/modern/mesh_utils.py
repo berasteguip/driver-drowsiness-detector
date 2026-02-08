@@ -1,4 +1,4 @@
-import cv2
+﻿import cv2
 print("DEBUG: mesh_utils - imported cv2")
 import mediapipe as mp
 print("DEBUG: mesh_utils - imported mediapipe")
@@ -16,15 +16,15 @@ LEFT_EYE  = [33, 160, 158, 133, 153, 144]
 RIGHT_EYE = [362, 385, 387, 263, 373, 380]
 MOUTH = [61, 81, 311, 291, 308, 78]
 
-# ----------------- Helpers geométricos -----------------
+# ----------------- Geometric helpers -----------------
 def dist(a, b):
-    """Distancia euclídea 2D."""
+    """2D Euclidean distance."""
     return np.linalg.norm(a - b)
 
 
 def aspect_ratio(pts):
     """
-    Aspect ratio genérico para un arreglo de 6 puntos (p0..p5)
+    Generic aspect ratio for an array of 6 points (p0..p5)
     pts: array shape (6,2)
     """
     A = dist(pts[1], pts[5])
@@ -35,7 +35,7 @@ def aspect_ratio(pts):
     return (A + B) / (2.0 * C)
 
 
-# ----------------- EAR y MAR -----------------
+# ----------------- EAR and MAR -----------------
 def get_ear(frame, face_landmarks):
     h, w = frame.shape[:2]
     lm = face_landmarks.landmark
@@ -52,16 +52,16 @@ def get_mar(frame, face_landmarks):
     h, w = frame.shape[:2]
     lm = face_landmarks.landmark
 
-    # Esquinas de la boca (externas)
+    # Mouth corners (outer)
     left_corner  = np.array([lm[61].x * w, lm[61].y * h])
     right_corner = np.array([lm[291].x * w, lm[291].y * h])
 
-    # Centro labio superior / inferior (internos)
+    # Upper/lower lip center (inner)
     upper_lip = np.array([lm[13].x * w, lm[13].y * h])
     lower_lip = np.array([lm[14].x * w, lm[14].y * h])
 
-    A = dist(upper_lip, lower_lip)      # apertura vertical
-    C = dist(left_corner, right_corner) # ancho de la boca
+    A = dist(upper_lip, lower_lip)      # vertical opening
+    C = dist(left_corner, right_corner) # mouth width
 
     if C == 0:
         return 0.0
@@ -73,17 +73,17 @@ def get_head_pose(frame, face_landmarks):
     h, w = frame.shape[:2]
     lm = face_landmarks.landmark
 
-    # puntos 2D en píxeles
+    # 2D points in pixels
     image_points = np.array([
-        (lm[1].x * w,   lm[1].y * h),    # nariz tip
-        (lm[152].x * w, lm[152].y * h),  # barbilla
-        (lm[33].x * w,  lm[33].y * h),   # ojo izq. esquina
-        (lm[263].x * w, lm[263].y * h),  # ojo der. esquina
-        (lm[61].x * w,  lm[61].y * h),   # boca izq.
-        (lm[291].x * w, lm[291].y * h),  # boca der.
+        (lm[1].x * w,   lm[1].y * h),    # nose tip
+        (lm[152].x * w, lm[152].y * h),  # chin
+        (lm[33].x * w,  lm[33].y * h),   # left eye corner
+        (lm[263].x * w, lm[263].y * h),  # right eye corner
+        (lm[61].x * w,  lm[61].y * h),   # left mouth corner
+        (lm[291].x * w, lm[291].y * h),  # right mouth corner
     ], dtype="double")
 
-    # modelo 3D (mm relativos)
+    # 3D model (relative mm)
     model_points = np.array([
         (0.0,   0.0,    0.0),     # nose tip
         (0.0,  -330.0, -65.0),    # chin
@@ -101,7 +101,7 @@ def get_head_pose(frame, face_landmarks):
         [0,            0,           1]
     ], dtype="double")
 
-    dist_coeffs = np.zeros((4, 1))  # sin distorsión
+    dist_coeffs = np.zeros((4, 1))  # no distortion
 
     success, rotation_vector, translation_vector = cv2.solvePnP(
         model_points, image_points, camera_matrix, dist_coeffs,
@@ -115,11 +115,11 @@ def get_head_pose(frame, face_landmarks):
     return float(pitch), float(yaw), float(roll)
 
 
-# ----------------- Dibujo de ojos y boca -----------------
+# ----------------- Eye and mouth drawing -----------------
 def draw_poly_norm(frame, landmarks, indices, color):
     """
-    Dibuja una polilínea cerrada a partir de índices de landmarks normalizados.
-    Usa la misma conversión de coordenadas que MediaPipe.
+    Draws a closed polyline from normalized landmark indices.
+    Uses the same coordinate conversion as MediaPipe.
     """
     h, w, _ = frame.shape
     pts = []

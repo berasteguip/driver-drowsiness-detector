@@ -1,17 +1,17 @@
-import os
+﻿import os
 from pathlib import Path
 
-# Ruta absoluta al directorio 'src'
+# Absolute path to the 'src' directory
 SRC_DIR = Path(__file__).resolve().parent
 
-# Ruta absoluta a la raíz del proyecto (un nivel arriba de src)
+# Absolute path to the project root (one level above src)
 ROOT_DIR = SRC_DIR.parent
 
-# Rutas a directorios de recursos
+# Resource directory paths
 MODELS_DIR = ROOT_DIR / "models"
 DATA_DIR = ROOT_DIR / "data"
 
-# Rutas específicas a modelos (accesibles desde cualquier parte del código)
+# Specific model paths (accessible from anywhere in the code)
 FACE_CASCADE_PATH = MODELS_DIR / "haarcascade_frontalface_default.xml"
 EYE_CASCADE_PATH = MODELS_DIR / "haarcascade_eye.xml"
 MOUTH_CASCADE_PATH = MODELS_DIR / "haarcascade_mcs_mouth.xml"
@@ -24,8 +24,8 @@ EYE_CASCADE_PATH = ROOT_DIR / "models" / "haarcascade_eye.xml"
 MOUTH_CASCADE_PATH = ROOT_DIR / "models" / "haarcascade_mouth.xml"
 
 def validate_paths():
-    """Verifica que los modelos críticos existan al arrancar."""
+    """Verify that critical models exist on startup."""
     critical_files = [FACE_CASCADE_PATH, MODEL_XGB_LEFT]
     for p in critical_files:
         if not p.exists():
-            print(f"⚠️  ADVERTENCIA: No se encuentra {p}")
+            print(f"WARNING: Missing {p}")

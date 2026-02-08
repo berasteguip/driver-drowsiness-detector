@@ -1,4 +1,4 @@
-import cv2
+﻿import cv2
 import numpy as np
 import os
 import glob
@@ -7,13 +7,13 @@ from ..detection.eye_detection import EyeDetector
 from .preprocess import EyePreprocessor
 
 def main():
-    # Inicializamos el detector de ojos
+    # Initialize the eye detector
     eye_detector = EyeDetector()
     
-    # Inicializamos el preprocesador de ojos (32x32 para HOG, sin CLAHE extra porque ya viene procesado)
+    # Initialize the eye preprocessor (32x32 for HOG, no extra CLAHE because it's already processed)
     eye_preprocessor = EyePreprocessor(output_size=32, margin=0.1, use_clahe=False)
 
-    # Definimos las rutas
+    # Define paths
     # project_root/
     #   driver-drowsiness-detector/ (BASE_DIR)
     #     src/
@@ -40,50 +40,50 @@ def main():
         input_path = os.path.join(PROCESSED_DIR, dataset)
         output_path = os.path.join(OUTPUT_DIR, dataset)
         
-        # Crear directorio de salida si no existe
+        # Create output directory if it does not exist
         os.makedirs(output_path, exist_ok=True)
 
-        # Buscar imágenes (png o jpg)
+        # Find images (png or jpg)
         image_files = glob.glob(os.path.join(input_path, "*.png")) + \
                       glob.glob(os.path.join(input_path, "*.jpg"))
         
-        print(f"Procesando {len(image_files)} imágenes de '{dataset}' en '{input_path}'...")
+        print(f"Processing {len(image_files)} images from '{dataset}' in '{input_path}'...")
         
         processed_count = 0
         eyes_extracted = 0
 
         for img_file in tqdm(image_files):
-            # Usar numpy + imdecode para soportar rutas con tildes/eñes en Windows
-            # cv2.imread falla silenciosamente con caracteres no ASCII en la ruta
+            # Use numpy + imdecode to support Windows paths with accents
+            # cv2.imread silently fails with non-ASCII characters in the path
             try:
                 stream = np.fromfile(img_file, dtype=np.uint8)
                 img = cv2.imdecode(stream, cv2.IMREAD_COLOR)
             except Exception:
-                print(f"Error al cargar la imagen: {img_file}")
+                print(f"Error loading image: {img_file}")
                 img = None
 
             if img is None:
                 continue
             
-            # Como la imagen YA ES LA CARA (processed), el frame de la cara es toda la imagen
+            # Since the image IS THE FACE already (processed), the face frame is the whole image
             h, w = img.shape[:2]
             face_frame = (0, 0, w, h)
 
-            # Detectar ojos
+            # Detect eyes
             eyes_coords = eye_detector.detect(img, face_frame)
             
 
             if eyes_coords is not None:
                 
-                # Extraer cada ojo usando el preprocesador
+                # Extract each eye using the preprocessor
                 for i, eye_box in enumerate(eyes_coords):
                     
-                    # Usamos el preprocesador para extraer y normalizar (32x32)
+                    # Use the preprocessor to extract and normalize (32x32)
                     eye_img = eye_preprocessor(img, eye_box)
                     
                     if eye_img is not None:
-                        # Guardar ojo
-                        # Guardar ojo usando imencode y tofile para soportar rutas con tildes/eñes
+                        # Save eye
+                        # Save eye using imencode and tofile to support paths with accents
                         
                         side = 'left' if i == 0 else 'right'
 
@@ -97,12 +97,12 @@ def main():
                         if success:
                             buffer.tofile(save_path)
                         else:
-                            print(f"Error al guardar el ojo en {save_path}")
+                            print(f"Error saving eye to {save_path}")
                         
                         eyes_extracted += 1
 
                 processed_count += 1
-        print(f"Finalizado {dataset}. Imágenes con ojos detectados: {processed_count}. Total ojos extraídos: {eyes_extracted}")
+        print(f"Finished {dataset}. Images with eyes detected: {processed_count}. Total eyes extracted: {eyes_extracted}")
 
 if __name__ == '__main__':
     main()
